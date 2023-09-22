@@ -1,0 +1,389 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Manual 2-Team Hangman Game</title>
+<link rel="apple-touch-icon" sizes="180x180" href="favicon_io/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
+<link rel="manifest" href="favicon_io/site.webmanifest">
+
+<style>
+p#question_title {
+  padding: 6px;
+  font-weight: bold;
+  font-size: 3em;
+  text-align: center;
+}
+div#running_time {
+  padding: 10px;
+  font-weight: bold;
+  font-size: 3em;
+  text-align: center;
+}
+p#log {
+  padding: 10px;
+  font-weight: bold;
+  font-size: 3em;
+  text-align: center;
+}
+p#input_area {
+  padding: 10px;
+  font-weight: bold;
+  font-size: 3em;
+  text-align: center;
+}
+input#input_box {
+  padding: 10px;
+  font-weight: bold;
+  font-size: 3em;
+  text-align: center;
+  width: 95%;
+}
+
+/* Centered Image Code */
+div#stem {
+display: flex;
+justify-content: center;
+}
+
+/* https://www.w3schools.com/howto/howto_js_progressbar.asp */
+#myProgress {
+  width: 100%;
+  background-color: #ddd;
+  justify-content: left;
+}
+
+#myBar {
+  border: 3px;
+  width: 0%;
+  height: 30px;
+  background-color: #04AA6D;
+  text-align: center;
+  /*
+  margin-left: 15px;
+  margin-right: 15px; */
+  line-height: 30px;
+  color: white;
+}
+
+#myScores {
+  border: 3px;
+  width: 100%;
+  height: 30px;
+  background-color: gray;
+  text-align: center;
+  line-height: 30px;
+  color: white;
+}
+
+#elapsedTime {
+  border: 3px;
+  width: 100%;
+  height: 30px;
+  background-color: gray;
+  text-align: center;
+  line-height: 30px;
+  color: white;
+}
+
+#myScoreLog {
+  border: 3px;
+  width: 100%;
+  height: 30px;
+  background-color: gold;
+  text-align: center;
+  line-height: 30px;
+  color: white;
+}
+
+table, th, td {
+  border:0px solid black;
+  border-collapse: collapse;
+}
+
+/* https://www.w3schools.com/css/tryit.asp?filename=trycss_tooltip_arrow_left */
+.level_in {
+  position: relative;
+  display: inline-block;
+  background-color: black;
+  color: #fff;
+}
+
+.level_out {
+  position: relative;
+  display: inline-block;
+  background-color: gold;
+  color: black;
+}
+
+.level_selected {
+  position: relative;
+  display: inline-block;
+  background-color: silver;
+  color: red;
+}
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted black;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 0;
+  position: absolute;
+  z-index: 1;
+  top: -5px;
+  left: 110%;
+}
+
+.tooltip .tooltiptext::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  margin-top: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent black transparent transparent;
+}
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+}
+
+</style>
+<script>
+var DEBUG = false; //
+var typed = ""
+var input_box
+var play_button
+
+function logKey2(e) {
+  idle_0_1sec = 0; // clear the timer as soon as a key is pressed
+
+  if (current_level_cleared) {
+        if (wait_to_init_level && e.code=='ArrowRight') {
+                clearTimeout(clear_audio_timeout_id); // prevent duplicate invocation
+                current_level_done_audio.pause();
+                current_level_done_audio.currentTime = 0; // why not .stop() instead
+                clearWaitToInitLevel(); // short-circuit the audio play timer
+                playVFXAudio("mid_transition");
+        } else if (!wait_to_init_level && e.code=='Enter') {
+                updateMyScoreBoard();
+                nextQuestionLevel(false);
+                initLevel();
+        }
+        document.getElementById('input_box').value = '';
+        return;
+  }
+  //
+  if (e.key=='Shift') { // Was Audio hint; now skip
+        return;
+  } else
+  // if (e.key=='Alt') { // Audio hint - ControlLeft
+  if (e.key=='Control') { // Audio hint - ControlLeft
+        playQuestionStem();
+        return;
+  }
+
+}
+
+var left_count = 0;
+var right_count = 0;
+let max_count = 6;
+
+let alex_images = [
+  "00-gallow.png", 
+  "01-gallow-alex-head.png", 
+  "02-gallow-alex-bust.png", 
+  "03-gallow-alex-right-hand.png", 
+  "04-gallow-alex-both-hand.png", 
+  "05-gallow-alex-right-foot.png", 
+  "06-gallow-alex-both-foot.png", 
+  "06-gallow-alex-both-foot.png", 
+]; 
+
+let steve_images = [
+  "00-gallow.png", 
+  "01-gallow-steve-head.png", 
+  "02-gallow-steve-bust.png", 
+  "03-gallow-steve-right-hand.png", 
+  "04-gallow-steve-both-hand.png", 
+  "05-gallow-steve-right-foot.png", 
+  "06-gallow-steve-both-foot.png", 
+  "06-gallow-steve-both-foot.png", 
+];
+
+function updatePanelty(gallo, up_or_down) {
+  if (gallo=='Left') {
+    gallo_id = document.getElementById("left_img")
+    if (up_or_down=='Up') {
+      if (left_count<max_count) left_count++;
+      document.getElementById("left_static_img").src = "images/"+ "06-alex-all-blank.png"
+    } else {
+      if (left_count>0) { left_count--;
+      } else {
+        document.getElementById("left_static_img").src = "images/"+ "06-alex-all.png"
+      }
+    }
+    img = "images/"+ alex_images[left_count]
+  } else {
+    gallo_id = document.getElementById("right_img")
+    if (up_or_down=='Up') {
+      if (right_count<max_count) right_count++;
+      document.getElementById("right_static_img").src = "images/"+ "06-steve-all-blank.png"
+    } else {
+      if (right_count>0) { right_count--;
+      } else {
+        document.getElementById("right_static_img").src = "images/"+ "06-steve-all.png"
+      }
+    }
+    img = "images/"+ steve_images[right_count]
+  }
+  console.log("counter: "+left_count.toString()+" "+right_count.toString()+" src to "+img)
+  gallo_id.src = img
+}
+
+
+function bodyOnload() {
+
+        document.getElementById("left_static_img").src = "images/06-alex-all.png"
+        document.getElementById("right_static_img").src = "images/06-steve-all.png"
+
+	document.getElementById("left_img").src = "images/00-gallow.png"
+	document.getElementById("right_img").src = "images/00-gallow.png"
+        const log = document.getElementById('log');
+// document.addEventListener('keydown', logKey2);
+        input_box = document.querySelector('#input_box');
+// const input_box = document.getElementById('input_box');
+// https://stackoverflow.com/questions/21159930/event-keycode-doesnt-work-with-on-input-undefined
+        // input_box.addEventListener('input', logKey2); // Input event does not have keycode property!
+        input_box.addEventListener('keydown', logKey2);
+// const play_button = document.getElementById('start_question');
+        play_button = document.querySelector('#start_question');
+        if (play_button!=null) play_button.addEventListener("click", playQuestionStem);
+	//
+	document.getElementById("input_box").focus();
+	//
+	preloadVFXAudios();
+	//
+	attachQuestionLevelStatAndMore();
+	updateMyScoreBoard();
+	nextQuestionLevel(true);
+	initLevel();
+	//
+	if (window.name=='bahbah speller') {
+		window.moveTo(0, 0);
+		window.resizeTo(screen.width, screen.height)
+		console.log(`maximized to ${screen.width},${screen.height}.`)
+	} else {
+		console.log(`window.name=${window.name}.`)
+	}
+	// console.log(`levenshteinDistance(str1, str2)=${levenshteinDistance(str1, str2)}`); 
+
+	window.scrollTo(0, document.body.scrollHeight);
+}
+
+// drag-drop code came from W3 school. 
+
+</script>
+</head>
+<body onload="bodyOnload()">
+<p>
+<!--
+<div id="myScoreLog">
+  <div id="myScoreLog"></div>
+</div>
+-->
+<div id="myScoreboard">
+  <div id="myScores"><!--0/0 = 000--></div>
+</div>
+<table style="width:100%">
+<!--
+  <tr>
+    <th width:"20%">Progress</th>
+    <th width:"60%">
+      <div id="myProgress">
+        <div id="myBar">0%</div>
+      </div>
+    </th> 
+    <th width:"20%"><div id="elapsedTime"> Time: 00:00</div></th>
+  </tr>
+-->
+  <tr>
+    <td><center><!--Player:<br><b>Bah-Bah</b>--></center></td>
+    <!-- <td><p id="question_title">Hangman: Alex (阿成) vs. Steve (阿福)</p></td>-->
+    <td><p id="question_title">Hangman: Alex vs. Steve</p></td>
+    <td style="overflow: auto" rowspan="2">
+
+	    <!--removed-->
+</td>
+  </tr>
+  <tr>
+    <td id="100ms">
+<img draggable="false" id="left_static_img"  width="80%"><br><div id="leftName" style="text-align: center; font-size:20px">阿成</div>
+    </td>
+    <td>
+      <div id="stem" style="text-align: center;">
+      <img draggable="false" id="left_img"  width="400"> 
+      <img draggable="false" id="right_img"  width="400">
+      </div>
+    </td>
+    <td id="right_guy">
+      <img draggable="false" id="right_static_img"  width="80%" >
+<br><div id="rightName" style="text-align: center; font-size: 20px">阿福</div>
+    </td>
+
+  </tr>
+  <tr style="height:20px">
+    <td></td>
+    <td>
+      <!--<p id="log">Press Keys To Step Up/Down. </p>-->
+   </td>
+    <td><center id="myRoundStats"><!-- Round 1: N/A--> </center></td> 
+  </tr>
+  <tr>
+    <td></td>
+    <td>
+      <center>
+      <!-- <input id="input_box" name="typing box" type="text" spellcheck="false"/>-->
+     <table>
+     <tr>
+     <td style="width:25%">
+     <button type="button" style="font-size : 20px;" onclick="updatePanelty('Left', 'Up')">倒爿起!</button>
+     <button type="button" style="font-size : 20px;" onclick="updatePanelty('Left', 'Down')">倒爿落!</button>
+     </td>
+     <td style="width:50%">
+     </td>
+     <td style="width:25%">
+     <button type="button" style="font-size : 20px;" onclick="updatePanelty('Right', 'Up')">正爿起!</button>
+     <button type="button" style="font-size : 20px;" onclick="updatePanelty('Right', 'Down')">正爿落!</button>
+     </td>
+     </tr>
+     </table>
+      </center>
+   </td>
+    <td><center id="reference"><!--Reference--></center></td>
+  </tr>
+</table>
+<p id="debug_text"></p>
+<!--
+<center>
+<a onclick="window.open(document.URL, 'bahbah speller', 'location=yes,height=570,width=520,scrollbars=yes,status=yes');">
+  Start New Speller
+</a>
+</center>
+-->
+<!--<p id="input_area"> -->
+<!-- <button id="start_question" type="button">start</button>-->
+</p>
+</body>
+</html>
+
