@@ -192,12 +192,13 @@ function logKey2(e) {
         playQuestionStem();
         return;
   }
-
 }
 
-var left_count = 0;
-var right_count = 0;
+var left_count = 0; left_lives = 3;
+var right_count = 0; right_lives = 3;
+
 let max_count = 6;
+let max_lives = 3; // will be able to be set by user
 
 let alex_images = [
   "00-gallow.png", 
@@ -221,36 +222,133 @@ let steve_images = [
   "06-gallow-steve-both-foot.png", 
 ];
 
-function updatePanelty(gallo, up_or_down) {
-  if (gallo=='Left') {
-    gallo_id = document.getElementById("left_img")
-    if (up_or_down=='Up') {
-      if (left_count<max_count) left_count++;
-      document.getElementById("left_static_img").src = "images/"+ "06-alex-all-blank.png"
-    } else {
-      if (left_count>0) { left_count--;
-      } else {
-        document.getElementById("left_static_img").src = "images/"+ "06-alex-all.png"
-      }
-    }
-    img = "images/"+ alex_images[left_count]
-  } else {
-    gallo_id = document.getElementById("right_img")
-    if (up_or_down=='Up') {
-      if (right_count<max_count) right_count++;
-      document.getElementById("right_static_img").src = "images/"+ "06-steve-all-blank.png"
-    } else {
-      if (right_count>0) { right_count--;
-      } else {
-        document.getElementById("right_static_img").src = "images/"+ "06-steve-all.png"
-      }
-    }
-    img = "images/"+ steve_images[right_count]
-  }
-  console.log("counter: "+left_count.toString()+" "+right_count.toString()+" src to "+img)
-  gallo_id.src = img
+let rip_image = "istockphoto-901964114-612x612.jpg"
+
+let suspense_sound = "sound-effect-thriller-1-108404.mp3"
+let relief_sound = "soundsnap-relief.mp3"
+
+var left_team = {
+  name: "left",
+  character: "alex",
+  gallo_name: "left_img",
+  count: 0, 
+  lives: 3,
+  heart_name: "left_hearts",
+  char_images: alex_images,
+  cell_name: "left_static_img",
+  blank_image: "06-alex-all-blank.png",
+  full_image: "06-alex-all.png",
+  game_over: false
+};
+
+var right_team = {
+  name: "right",
+  character: "steve",
+  gallo_name: "right_img",
+  count: 0, 
+  lives: 3,
+  heart_name: "right_hearts",
+  char_images: steve_images,
+  cell_name: "right_static_img",
+  blank_image: "06-steve-all-blank.png",
+  full_image: "06-steve-all.png",
+  game_over: false
+};
+
+function updateTeamCellWidth() {
+        left_cell = document.getElementById("left_cell")
+        center_cell = document.getElementById("center_cell")
+        right_cell = document.getElementById("right_cell")
+        if (left_cell.width>right_cell.width) {
+                right_cell.width = left_cell.width
+        } else {
+                left_cell.width = right_cell.width
+        }
+	console.log(`left: ${left_cell.width} right: ${right_cell.width}`)
 }
 
+function updateHeartsByLives(heart_name, heart_count) { // left_hearts or right_hearts
+        elem = document.getElementById(heart_name)
+        heart_text = ""
+        for (i = 0; i<heart_count; i++) 
+                heart_text += '<img src="images/lowrez-heart.png" width="25%">'
+        elem.innerHTML = heart_text
+	updateTeamCellWidth()
+	console.log(`${heart_name} update to ${heart_count} heart(s)`);
+}
+
+function update_team(team, up_or_down) {
+    gallo_id = document.getElementById(team["gallo_name"])
+    if (up_or_down=='Up') {
+      sound_effect = "audios/"+suspense_sound;
+      if (team.count<max_count) {
+        team.count++;
+        document.getElementById(team.cell_name).src = "images/"+ team.blank_image
+      } else {
+        if (team.lives>0) {
+          team.lives--;
+          updateHeartsByLives(team.heart_name,team.lives);
+          if (team.lives>0) {
+            team.count = 0;
+            document.getElementById(team.cell_name).src = "images/"+ team.full_image
+          } else {
+            team.game_over = true
+            document.getElementById(team.cell_name).src = "images/"+rip_image
+          }
+        }
+      }
+    } else {
+      sound_effect = "audios/"+relief_sound;
+      if (team.count>0) {
+        team.count--;
+        if (team.count==0) {
+          document.getElementById(team.cell_name).src = "images/"+ team.full_image
+        } 
+        if (team.game_over) { // re-surrection
+          team.lives++; // will be not over!
+          updateHeartsByLives(team.heart_name,team.lives);
+	  document.getElementById(team.cell_name).src = "images/"+team.blank_image
+        }
+      } else {
+        if (team.lives<max_lives) {
+          team.lives++;
+          updateHeartsByLives(team.heart_name,team.lives);
+          {
+            team.count = max_count;
+            document.getElementById(team.cell_name).src = "images/"+ team.blank_image
+          }
+        } 
+      }
+      team.game_over = false
+    }
+    img = "images/"+ team["char_images"][team.count]
+  
+    console.log("left: "+left_team.lives.toString()+", "+left_team.count.toString()+" "+
+                "right: "+right_team.lives.toString()+", "+right_team.count.toString()+" new src to "+img)
+    gallo_id.src = img
+}
+
+
+function updatePanelty(gallo, up_or_down) {
+  if (gallo=='Left') {
+    update_team(left_team, up_or_down)
+  } else {
+    update_team(right_team, up_or_down)
+  }
+}
+
+function updateHearts(heart_name) { // left_hearts or right_hearts
+	elem = document.getElementById(heart_name)
+	if (heart_name=="left_hearts") {
+		heart_count = left_lives;
+	} else {
+		heart_count = right_lives;
+	}
+	heart_text = ""
+	for (i = 0; i<heart_count; i++) 
+		heart_text += '<img src="images/lowrez-heart.png" width="25%">'
+	elem.innerHTML = heart_text
+}
 
 function bodyOnload() {
 
@@ -259,6 +357,19 @@ function bodyOnload() {
 
 	document.getElementById("left_img").src = "images/00-gallow.png"
 	document.getElementById("right_img").src = "images/00-gallow.png"
+
+        left_cell = document.getElementById("left_cell")
+        center_cell = document.getElementById("center_cell")
+        right_cell = document.getElementById("right_cell")
+	if (left_cell.width>right_cell.width) {
+		right_cell.width = left_cell.width
+        } else {
+		left_cell.width = right_cell.width
+        }
+	updateHearts("left_hearts")
+	updateHearts("right_hearts")
+
+
         const log = document.getElementById('log');
 // document.addEventListener('keydown', logKey2);
         input_box = document.querySelector('#input_box');
@@ -278,15 +389,6 @@ function bodyOnload() {
 	updateMyScoreBoard();
 	nextQuestionLevel(true);
 	initLevel();
-	//
-	if (window.name=='bahbah speller') {
-		window.moveTo(0, 0);
-		window.resizeTo(screen.width, screen.height)
-		console.log(`maximized to ${screen.width},${screen.height}.`)
-	} else {
-		console.log(`window.name=${window.name}.`)
-	}
-	// console.log(`levenshteinDistance(str1, str2)=${levenshteinDistance(str1, str2)}`); 
 
 	window.scrollTo(0, document.body.scrollHeight);
 }
@@ -324,21 +426,29 @@ function bodyOnload() {
     <td style="overflow: auto" rowspan="2">
 
 	    <!--removed-->
-</td>
+    </td>
   </tr>
   <tr>
-    <td id="100ms">
+    <td id="left_cell">
 <img draggable="false" id="left_static_img"  width="80%"><br><div id="leftName" style="text-align: center; font-size:20px">阿成</div>
+<br>
+<center id="left_hearts">
+    <img src="images/lowrez-heart.png" width="25%">
+  </center>
     </td>
-    <td>
+    <td id="center_cell">
       <div id="stem" style="text-align: center;">
       <img draggable="false" id="left_img"  width="400"> 
       <img draggable="false" id="right_img"  width="400">
       </div>
     </td>
-    <td id="right_guy">
+    <td id="right_cell">
       <img draggable="false" id="right_static_img"  width="80%" >
 <br><div id="rightName" style="text-align: center; font-size: 20px">阿福</div>
+<br>
+<center id="right_hearts">
+    <img src="images/lowrez-heart.png" width="25%">
+  </center>
     </td>
 
   </tr>
@@ -349,11 +459,13 @@ function bodyOnload() {
    </td>
     <td><center id="myRoundStats"><!-- Round 1: N/A--> </center></td> 
   </tr>
-  <tr>
-    <td></td>
+  <tr width="100%">
     <td>
-      <center>
-      <!-- <input id="input_box" name="typing box" type="text" spellcheck="false"/>-->
+<!-- <center id="left_hearts"><img src="images/lowrez-heart.png" width="25%"></center> -->
+
+</td>
+    <td>
+     <center>
      <table>
      <tr>
      <td style="width:25%">
@@ -368,9 +480,11 @@ function bodyOnload() {
      </td>
      </tr>
      </table>
-      </center>
+     </center>
    </td>
-    <td><center id="reference"><!--Reference--></center></td>
+   <td></td>
+   <td><!-- was supposed to be right hearts--->
+  </td>
   </tr>
 </table>
 <p id="debug_text"></p>
