@@ -197,8 +197,9 @@ function logKey2(e) {
 var left_count = 0; left_lives = 3;
 var right_count = 0; right_lives = 3;
 
+let MAX_LIVES = 2; // or 3 - anyway
 let max_count = 6;
-let max_lives = 3; // will be able to be set by user
+let max_lives = MAX_LIVES; // will be able to be set by user
 
 let alex_images = [
   "00-gallow.png", 
@@ -227,18 +228,24 @@ let rip_image = "istockphoto-901964114-612x612.jpg"
 let suspense_sound = "sound-effect-thriller-1-108404.mp3"
 let relief_sound = "soundsnap-relief.mp3"
 
+function preloadVFXAudios() {
+}
+
+
 var left_team = {
   name: "left",
   character: "alex",
   gallo_name: "left_img",
   count: 0, 
-  lives: 3,
+  lives: MAX_LIVES,
   heart_name: "left_hearts",
   char_images: alex_images,
   cell_name: "left_static_img",
   blank_image: "06-alex-all-blank.png",
   full_image: "06-alex-all.png",
-  game_over: false
+  game_over: false,
+  up_button_id: "alex_up",
+  down_button_id: "alex_down",
 };
 
 var right_team = {
@@ -246,13 +253,16 @@ var right_team = {
   character: "steve",
   gallo_name: "right_img",
   count: 0, 
-  lives: 3,
+  lives: MAX_LIVES,
   heart_name: "right_hearts",
   char_images: steve_images,
   cell_name: "right_static_img",
   blank_image: "06-steve-all-blank.png",
   full_image: "06-steve-all.png",
-  game_over: false
+  game_over: false,
+  up_button_id: "steve_up",
+  down_button_id: "steve_down",
+
 };
 
 function updateTeamCellWidth() {
@@ -281,6 +291,7 @@ function update_team(team, up_or_down) {
     gallo_id = document.getElementById(team["gallo_name"])
     if (up_or_down=='Up') {
       sound_effect = "audios/"+suspense_sound;
+      document.getElementById(team.down_button_id).disabled = false;
       if (team.count<max_count) {
         team.count++;
         document.getElementById(team.cell_name).src = "images/"+ team.blank_image
@@ -294,11 +305,13 @@ function update_team(team, up_or_down) {
           } else {
             team.game_over = true
             document.getElementById(team.cell_name).src = "images/"+rip_image
+	    document.getElementById(team.up_button_id).disabled = true;
           }
         }
       }
     } else {
       sound_effect = "audios/"+relief_sound;
+      document.getElementById(team.up_button_id).disabled = false;
       if (team.count>0) {
         team.count--;
         if (team.count==0) {
@@ -317,7 +330,9 @@ function update_team(team, up_or_down) {
             team.count = max_count;
             document.getElementById(team.cell_name).src = "images/"+ team.blank_image
           }
-        } 
+        } else {
+	   document.getElementById(team.down_button_id).disabled = true;
+        }
       }
       team.game_over = false
     }
@@ -366,8 +381,8 @@ function bodyOnload() {
         } else {
 		left_cell.width = right_cell.width
         }
-	updateHearts("left_hearts")
-	updateHearts("right_hearts")
+	updateHeartsByLives(left_team.heart_name,left_team.lives)
+	updateHeartsByLives(right_team.heart_name,right_team.lives)
 
 
         const log = document.getElementById('log');
@@ -376,19 +391,19 @@ function bodyOnload() {
 // const input_box = document.getElementById('input_box');
 // https://stackoverflow.com/questions/21159930/event-keycode-doesnt-work-with-on-input-undefined
         // input_box.addEventListener('input', logKey2); // Input event does not have keycode property!
-        input_box.addEventListener('keydown', logKey2);
+        // input_box.addEventListener('keydown', logKey2);
 // const play_button = document.getElementById('start_question');
         play_button = document.querySelector('#start_question');
         if (play_button!=null) play_button.addEventListener("click", playQuestionStem);
 	//
-	document.getElementById("input_box").focus();
+	// document.getElementById("input_box").focus();
 	//
 	preloadVFXAudios();
 	//
-	attachQuestionLevelStatAndMore();
-	updateMyScoreBoard();
-	nextQuestionLevel(true);
-	initLevel();
+	// attachQuestionLevelStatAndMore();
+	// updateMyScoreBoard();
+	// nextQuestionLevel(true);
+	// initLevel();
 
 	window.scrollTo(0, document.body.scrollHeight);
 }
@@ -469,14 +484,14 @@ function bodyOnload() {
      <table>
      <tr>
      <td style="width:25%">
-     <button type="button" style="font-size : 20px;" onclick="updatePanelty('Left', 'Up')">倒爿起!</button>
-     <button type="button" style="font-size : 20px;" onclick="updatePanelty('Left', 'Down')">倒爿落!</button>
+     <button type="button" id="alex_up" style="font-size : 20px;" onclick="updatePanelty('Left', 'Up')">倒爿起!</button>
+     <button type="button" disabled id="alex_down" style="font-size : 20px;" onclick="updatePanelty('Left', 'Down')">倒爿落!</button>
      </td>
      <td style="width:50%">
      </td>
      <td style="width:25%">
-     <button type="button" style="font-size : 20px;" onclick="updatePanelty('Right', 'Up')">正爿起!</button>
-     <button type="button" style="font-size : 20px;" onclick="updatePanelty('Right', 'Down')">正爿落!</button>
+     <button type="button" id="steve_up" style="font-size : 20px;" onclick="updatePanelty('Right', 'Up')">正爿起!</button>
+     <button type="button" disabled id="steve_down" style="font-size : 20px;" onclick="updatePanelty('Right', 'Down')">正爿落!</button>
      </td>
      </tr>
      </table>
